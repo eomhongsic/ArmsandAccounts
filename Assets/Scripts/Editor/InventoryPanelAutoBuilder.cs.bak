@@ -1,0 +1,154 @@
+﻿using UnityEngine;
+using UnityEditor;
+using UnityEngine.UI;
+using TMPro;
+
+public static class InventoryPanelAutoBuilder
+{
+    [MenuItem("Tools/Build Inventory Panel")]
+    public static void BuildInventoryPanel()
+    {
+        var canvas = GameObject.Find("Canvas");
+        if (canvas == null)
+        {
+            Debug.LogError("Canvas not found.");
+            return;
+        }
+
+        // 기존 오브젝트 제거
+        var oldPanel = GameObject.Find("InventoryPanel");
+        if (oldPanel != null)
+        {
+            GameObject.DestroyImmediate(oldPanel);
+        }
+
+        // 1. Panel 생성
+        GameObject inventoryPanel = new GameObject("InventoryPanel", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        inventoryPanel.transform.SetParent(canvas.transform);
+
+        RectTransform rt = inventoryPanel.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(300, 400);
+        rt.anchorMin = new Vector2(1, 0.5f);
+        rt.anchorMax = new Vector2(1, 0.5f);
+        rt.pivot = new Vector2(1, 0.5f);
+        rt.anchoredPosition = new Vector2(-150, 0);
+
+        var layout = inventoryPanel.GetComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(15, 15, 10, 10);
+        layout.spacing = 10;
+        layout.childAlignment = TextAnchor.UpperCenter;
+
+        var fitter = inventoryPanel.GetComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        // 2. Title
+        CreateText("InventoryTitle", inventoryPanel.transform, "Inventory", 36, 40);
+
+        // 3. Scroll View
+        GameObject scrollView = CreateScrollView(inventoryPanel.transform, out GameObject content);
+        scrollView.name = "InventoryList";
+        content.name = "Content";
+
+        // 4. Selected Text
+        CreateText("SelectedTotalText", inventoryPanel.transform, "Selected Total: $0", 32, 30);
+
+        // 5. Button Group
+        GameObject buttonGroup = new GameObject("ButtonGroup", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+        buttonGroup.transform.SetParent(inventoryPanel.transform);
+
+        var hlayout = buttonGroup.GetComponent<HorizontalLayoutGroup>();
+        hlayout.spacing = 10;
+        hlayout.childForceExpandWidth = true;
+        hlayout.childControlWidth = false;
+
+        CreateButton("AddItemButton", buttonGroup.transform, "Add Item");
+        CreateButton("RemoveItemButton", buttonGroup.transform, "Remove Item");
+
+        Debug.Log("✅ InventoryPanel 생성 완료!");
+    }
+
+    static GameObject CreateText(string name, Transform parent, string text, int fontSize, float preferredHeight)
+    {
+        GameObject obj = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+        obj.transform.SetParent(parent, false);
+
+        var rect = obj.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0, 1);
+        rect.anchorMax = new Vector2(1, 1);
+        rect.pivot = new Vector2(0.5f, 1);
+        rect.sizeDelta = new Vector2(0, preferredHeight);
+
+        var tmp = obj.GetComponent<TextMeshProUGUI>();
+        tmp.text = text;
+        tmp.fontSize = fontSize;
+        tmp.alignment = TextAlignmentOptions.Center;
+
+        return obj;
+    }
+
+    static GameObject CreateButton(string name, Transform parent, string label)
+    {
+        GameObject button = new GameObject(name, typeof(RectTransform), typeof(Button), typeof(Image), typeof(LayoutElement));
+        button.transform.SetParent(parent, false);
+
+        var rt = button.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(0, 40);
+        rt.anchorMin = new Vector2(0, 1);
+        rt.anchorMax = new Vector2(1, 1);
+        rt.pivot = new Vector2(0.5f, 1);
+
+        GameObject textObj = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObj.transform.SetParent(button.transform, false);
+
+        var textRT = textObj.GetComponent<RectTransform>();
+        textRT.anchorMin = Vector2.zero;
+        textRT.anchorMax = Vector2.one;
+        textRT.offsetMin = Vector2.zero;
+        textRT.offsetMax = Vector2.zero;
+
+        var tmp = textObj.GetComponent<TextMeshProUGUI>();
+        tmp.text = label;
+        tmp.fontSize = 24;
+        tmp.alignment = TextAlignmentOptions.Center;
+
+        return button;
+    }
+
+    static GameObject CreateScrollView(Transform parent, out GameObject content)
+    {
+        GameObject scrollView = new GameObject("ScrollView", typeof(RectTransform), typeof(ScrollRect), typeof(Image), typeof(LayoutElement));
+        scrollView.transform.SetParent(parent, false);
+        scrollView.GetComponent<LayoutElement>().flexibleHeight = 1;
+
+        var rt = scrollView.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(0, 0);
+        rt.anchorMin = new Vector2(0, 0);
+        rt.anchorMax = new Vector2(1, 1);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+
+        GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(Mask), typeof(Image));
+        viewport.transform.SetParent(scrollView.transform, false);
+        var viewportImg = viewport.GetComponent<Image>();
+        viewportImg.color = new Color(1, 1, 1, 0.1f);
+        viewportImg.raycastTarget = true;
+
+        GameObject contentObj = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        contentObj.transform.SetParent(viewport.transform, false);
+
+        var sr = scrollView.GetComponent<ScrollRect>();
+        sr.viewport = viewport.GetComponent<RectTransform>();
+        sr.content = contentObj.GetComponent<RectTransform>();
+        sr.horizontal = false;
+        sr.vertical = true;
+
+        var vlg = contentObj.GetComponent<VerticalLayoutGroup>();
+        vlg.spacing = 10;
+        vlg.childAlignment = TextAnchor.UpperCenter;
+
+        var fitter = contentObj.GetComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        content = contentObj;
+        return scrollView;
+    }
+}
